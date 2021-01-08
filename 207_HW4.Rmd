@@ -1,0 +1,272 @@
+---
+title: "HW4"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+periodogram <- function(x){
+  xPer <- (1/length(x))*abs(fft(x)^2)
+  f <- seq(0,1.0-1/length(x),by=1/length(x))
+  return(list(f,xPer))
+}
+```
+
+
+\section{1}
+$$Z_t \sim WN(1)$$
+\subsection{a}
+$$X_t = X_{t-1} - 0.9X_{t-2} + Z_t$$
+```{r}
+library(astsa)
+freq = arma.spec(ar = c(1,-0.9), var.noise = 1, type = "line")
+best = freq$freq[which.max(freq$spec)]
+```
+The frequencies that appear to be dominant are $f \in [0.125, 0.175]$. The peak occured at `r best` 
+
+```{r}
+set.seed(1)
+sim = arima.sim(n = 50, list(ar = c(1,-0.9)))
+period = cumsum(rle(as.vector(sign(diff(sim))))$lengths) + 1
+plot(sim)
+abline(v = period, col = 'red')
+```
+```{r}
+plot(periodogram(sim)[[1]],
+     periodogram(sim)[[2]], type = 'l',
+     xlim = c(0,0.5))
+```
+
+
+```{r}
+mean(rle(as.vector(sign(diff(sim))))$lengths) * 2
+1/best
+```
+It appears that the observed period matches reasonably well with $\frac{1}{f}$
+
+\newpage
+\subsection{b}
+$$X'_t = -0.3X'_{t-2} - 0.9X'_{t-4} + Z_t$$
+```{r}
+library(astsa)
+freq = arma.spec(ar = c(0,-0.3,0,-0.9), var.noise = 1, type = "line")
+best1 = freq$freq[which.max(freq$spec[1:300])]
+best2 = freq$freq[which.max(freq$spec)]
+```
+The frequencies that appear to be dominant are $f_1 \in [0.125, 0.15]$ and $f_1 \in [0.35, 0.375]$. The peaks occured at `r best1` and `r best2` 
+
+```{r}
+set.seed(1)
+sim = arima.sim(n = 50, list(ar = c(0,-0.3,0,-0.9)))
+period = cumsum(rle(as.vector(sign(diff(sim))))$lengths) + 1
+plot(sim)
+abline(v = period, col = 'red')
+```
+```{r}
+plot(periodogram(sim)[[1]],
+     periodogram(sim)[[2]], type = 'l',
+     xlim = c(0,0.5))
+```
+
+
+```{r}
+mean(rle(as.vector(sign(diff(sim))))$lengths) * 2
+1/best1
+1/best2
+```
+It appears that the observed period matches reasonably well with $\frac{1}{f_2}$ and not with $\frac{1}{f_1}$
+
+\newpage
+\subsection{c}
+$$X''_t = 0.9X''_{t-5} + Z_t$$
+```{r}
+library(astsa)
+freq = arma.spec(ar = c(0,0,0,0,0.9), var.noise = 1, type = "line")
+best1 = 0
+best2 = 0.2
+best3 = 0.4
+```
+The frequencies that appear to be dominant are $f_1 \in [0, 0.05]$, $f_2 \in [0.19, 0.21]$, and $f_3 \in [0.39, 0.41]$. The peak occured at 0, 0.2, and 0.4.
+
+```{r}
+set.seed(1)
+sim = arima.sim(n = 50, list(ar = c(0,0,0,0,0.9)))
+period = cumsum(rle(as.vector(sign(diff(sim))))$lengths) + 1
+plot(sim)
+abline(v = period, col = 'red')
+```
+```{r}
+plot(periodogram(sim)[[1]],
+     periodogram(sim)[[2]], type = 'l',
+     xlim = c(0,0.5))
+```
+
+
+```{r}
+mean(rle(as.vector(sign(diff(sim))))$lengths) * 2
+1/best1
+1/best2
+1/best3
+```
+It appears that the observed period matches reasonably well with $\frac{1}{f_3}$ and not with $\frac{1}{f_2}$ or $\frac{1}{f_1}$.
+
+\newpage
+\section{2}
+$$(1-0.9B^3)X_t = Z_t, Z_t \sim WN(1)$$
+\subsection{a} 
+Compute transfer, power transfer functions, and spectral density $f_X(\lambda)$ associated with AR polynomial $(1-0.9B^3)$.
+$$A(\lambda) = \sum_ja_je^{-2\pi ij\lambda}, -1/2\leq \lambda \leq 1/2$$
+Where $|A(\lambda)|^2$ is the power transfer function. Thus with $a_0 = 1$ and $a_3 = -0.9$ then,
+$$= 1 - 0.9e^{-6\pi i\lambda} = \phi(e^{-2\pi i\lambda})$$
+Now, the spectral density is given by,
+$$f_X(\lambda) = \sigma_Z^2\frac{|\theta(e^{-2\pi i\lambda})|^2}{|\phi(e^{-2\pi i\lambda})|^2}, -1/2\leq \lambda \leq 1/2$$
+With $\theta(z) = 1, \phi(z) = 1-0.9z^3$,
+$$= \frac{\sigma_Z^2}{|1 - 0.9*(e^{-2\pi i\lambda})^3|^2}$$
+$$= \frac{\sigma_Z^2}{|1 - 0.9*(e^{-6\pi i\lambda})|^2}$$
+$$=\frac{\sigma_Z^2}{|1 - 0.9\cos(6\pi\lambda) - 0.9i\sin(6\pi\lambda)|^2}$$
+$$= \frac{\sigma_Z^2}{(1 - 0.9\cos(6\pi\lambda))^2 - 0.9^2i^2\sin^2(6\pi\lambda)}$$
+$$=\frac{\sigma_Z^2}{1 - 2*0.9\cos(6\pi\lambda) + 0.9^2\cos^2(6\pi\lambda) + 0.9^2\sin^2(6\pi\lambda)}$$
+$$=\frac{\sigma_Z^2}{1 - 2*0.9\cos(6\pi\lambda) + 0.9^2(\cos^2(6\pi\lambda)+ \sin^2(6\pi\lambda))}$$
+Using $\cos^2(\theta) + \sin^2(\theta) = 1$ then,
+$$=\frac{\sigma_Z^2}{1 + 0.9^2 - 2*0.9\cos(6\pi\lambda)}$$
+Thus the power transfer function is,
+$$|A(\lambda)|^2 = 1 + 0.9^2 - 2*0.9\cos(6\pi\lambda)$$
+
+\newpage
+\subsection{b}
+
+Plotting the theoretical spectral density gives,
+```{r}
+specden <- function(x){1/(1 + 0.9^2 - 2*0.9*cos(6*pi*x))}
+grid = seq(from = 0, to = 1/2, length.out = 1000)
+grid2 = seq(from = 0.2, to = 1/2, length.out = 1000)
+plot(grid, specden(grid), type = 'l')
+best1 = grid[which.max(specden(grid))]
+best2 = grid2[which.max(specden(grid2))]
+```
+Based off this plot, I believe the series will oscillate. Since the frequency that contributes the most is `r best2`, I believe it will have period 3.
+
+\newpage
+\subsection{c}
+```{r}
+set.seed(1)
+sim = arima.sim(n = 50, list(ar = c(0,0,0.9)))
+period = cumsum(rle(as.vector(sign(diff(sim))))$lengths) + 1
+plot(sim)
+abline(v = period, col = 'red')
+```
+```{r}
+plot(periodogram(sim)[[1]],
+     periodogram(sim)[[2]], type = 'l',
+     xlim = c(0,0.5))
+```
+
+```{r}
+mean(rle(as.vector(sign(diff(sim))))$lengths) * 2
+1/best1
+1/best2
+```
+Since the period roughly matches the theoretical prediction, the two simulations are consistent.
+
+\newpage
+\subsection{d}
+Now consider the linear filter with weights $a_1 = a_0 = a_1 = \frac{1}{3}; a_j = 0$ otherwise. 
+$$A(\lambda) = \frac{1}{2q + 1}(2\frac{\sin(\pi(q+1)\lambda)}{\sin(\pi\lambda)}\cos(\pi q\lambda)-1)$$
+and with $q=1$, 
+$$= \frac{1}{3}(2\frac{\sin(2\pi\lambda)}{\sin(\pi\lambda)}\cos(\pi\lambda)-1)$$
+Then, the power transfer function would be,
+$$|A(\lambda)|^2 = \frac{1}{9}(2\frac{\sin(2\pi\lambda)}{\sin(\pi\lambda)}\cos(\pi\lambda)-1)^2$$
+Thus, the spectral density for $Y$ would be,
+$$f_Y(\lambda) = |A(\lambda)|^2f_X(\lambda)$$
+$$= \frac{1}{9}(2\frac{\sin(2\pi\lambda)}{\sin(\pi\lambda)}\cos(\pi\lambda)-1)^2 * \frac{\sigma_Z^2}{1 + 0.9^2 - 2*0.9\cos(6\pi\lambda)}$$
+
+\newpage
+\subsection{e}
+```{r}
+Xspecden <- function(x){1/(1 + 0.9^2 - 2*0.9*cos(6*pi*x))}
+Yspecden <- function(y){abs((1/9)*(2*(sin(2*pi*y)/sin(pi*y))*cos(pi*y)-1))^2}
+grid = seq(from = 0, to = 1/2, length.out = 1000)
+par(mfrow = c(2,1))
+plot(grid, Xspecden(grid), type = 'l')
+plot(grid, Yspecden(grid)*Xspecden(grid), type = 'l')
+```
+Looking at the plot, the frequency at 1/3 has been smoothed. Thus, I would expect the series to oscillate with a period larger than 3 after the smoothing.
+
+\newpage
+\subsection{f}
+```{r}
+set.seed(1)
+sim = arima.sim(n = 50, list(ar = c(0,0,0.9)))
+sim.filter = filter(sim, sides=2, filter=rep(1/3,3))
+period = cumsum(rle(as.vector(sign(diff(sim.filter))))$lengths) + 1
+plot(sim.filter)
+abline(v = period, col = 'red')
+```
+```{r}
+par(mfrow = c(2,1))
+plot(periodogram(sim)[[1]],
+     periodogram(sim)[[2]], type = 'l',
+     xlim = c(0,0.5))
+plot(periodogram(sim.filter[!is.na(sim.filter)])[[1]],
+     periodogram(sim.filter[!is.na(sim.filter)])[[2]], type = 'l',
+     xlim = c(0,0.5))
+```
+```{r}
+mean(rle(as.vector(sign(diff(sim.filter))))$lengths) * 2
+```
+The simulation confirms the theory as the average period is now larger than before, thus indicating less weight from the frequency of 1/3.
+
+\newpage
+\section{3}
+For $x_0,...,x_{n-1}$ and $y_0,...,y_{n-1}$
+$$z_t = \sum_{k = 0}^{n-1}x_{t-k}y_k$$
+With $x_{-m} = x_{n-m}$. The $j$th coefficient of a DFT is given by,
+$$b_j = \sum_{t=0}^{n-1}x_te^{-\frac{2\pi ijt}{n}}, j = 0,...,n-1$$
+Thus, 
+$$b_j^X = \sum_{t=0}^{n-1}x_te^{-\frac{2\pi ijt}{n}}, j = 0,...,n-1$$
+and,
+$$b_j^Y = \sum_{t=0}^{n-1}y_te^{-\frac{2\pi ijt}{n}}, j = 0,...,n-1$$
+Now consider the product,
+$$b_j^Xb_j^Y =  \sum_{t=0}^{n-1}x_te^{-\frac{2\pi ijt}{n}} \cdot \sum_{t=0}^{n-1}y_te^{-\frac{2\pi ijt}{n}}, j = 0,...,n-1$$
+$$= \sum_{k = 0}^{n-1}\sum_{t = 0}^{n-1} x_te^{-\frac{2\pi ijt}{n}}y_ke^{-\frac{2\pi ijk}{n}}$$
+$$= \sum_{k = 0}^{n-1}\sum_{t = 0}^{n-1}x_ty_ke^{\frac{-2\pi ij}{n}(k + t)}$$
+Using the IFT, $x_{t} = \frac{1}{n}\sum_{j = 0}^{n-1}b_je^{\frac{2\pi i j(t)}{n}}$
+$$= \frac{1}{n}\sum_{k = 0}^{n-1}\sum_{t = 0}^{n-1}\sum_{j = 0}^{n-1}b_jy_ke^{\frac{-2\pi ij}{n}(k + t)}e^{\frac{2\pi i jt}{n}}$$
+$$= \frac{1}{n}\sum_{k = 0}^{n-1}\sum_{t = 0}^{n-1}\sum_{j = 0}^{n-1}b_jy_ke^{\frac{-2\pi ij}{n}(k)}$$
+$$=  \frac{1}{n}\sum_{t = 0}^{n-1}\sum_{k = 0}^{n-1}\sum_{j = 0}^{n-1}b_jy_ke^{\frac{2\pi i j(-k)}{n}}$$
+$$= \frac{1}{n}\sum_{t = 0}^{n-1}\sum_{k = 0}^{n-1}\sum_{j = 0}^{n-1}b_jy_ke^{-\frac{2\pi ijt}{n}}e^{\frac{2\pi i j(t-k)}{n}}$$
+$x_{t-k} = \frac{1}{n}\sum_{j = 0}^{n-1}b_je^{\frac{2\pi i j(t-k)}{n}}$,
+$$ = \sum_{t = 0}^{n-1}\big(\sum_{k = 0}^{n-1}x_{t-k}y_k\big)e^{-\frac{2\pi ijt}{n}}$$
+$$=\sum_{t = 0}^{n-1}z_te^{-\frac{2\pi ijt}{n}}= b_j^Z,  j = 0,...,n-1$$
+$$\therefore b_j^Xb_j^Y  = b_j^Z,  j = 0,...,n-1$$
+\newpage
+\section{4}
+Suppose $x_t$ is $h$-cyclic for some $h$. Also that the DFT of $x_0,...,x_{h-1}$ is $\beta_0,...,\beta_{h-1}$. That is,
+$$\{\beta_j\}_{j=0}^{j=h-1} = \{\sum_{t = 0}^{h-1}x_te^{-\frac{2\pi ijt}{n}}\}_{j=0}^{j=h-1}$$
+For $n = kh$ data points instead of $h$, note that because $x_{t+h} = x_t \forall t$, then for $\forall j$, 
+$$b_j = \sum_{t = 0}^{n-1}x_te^{-\frac{2\pi ijt}{n}} = x_1*e^{-\frac{2\pi ij(1)}{n}} + ... + x_{n-1}*e^{-\frac{2\pi ij(n-1)}{n}}$$
+$$= x_1(e^{-\frac{2\pi ij(1)}{n}} + ... + e^{-\frac{2\pi ij(n-h)}{n}}) + ... + x_{h-1}(e^{-\frac{2\pi ij(h-1)}{n}} + ...+ e^{-\frac{2\pi ij(n-1)}{n}})$$
+$$= x_1(e^{-\frac{2\pi ij(1)}{n}} + e^{-\frac{2\pi ij(h)}{n}} + ... + e^{-\frac{2\pi ij(n-h)}{n}})+ ... + x_{h-1}(e^{-\frac{2\pi ij(h-1)}{n}} + ...+ e^{-\frac{2\pi ij(n-1)}{n}})$$
+Now note that the data can be written in $k$ groups of $h$ observations each,
+$$\{t\} = \{0,...,h-1\}\bigcup\{h,...,2h-1\}\bigcup...\bigcup\{(k-1)h = n-h,...,kh-1 = n-1\}$$
+So we can rewrite the sums as,
+$$= \sum_{t = 0}^{h-1}x_t\sum_{c = 0}^{k-1}e^{(-2\pi ij\frac{t + c\cdot h}{n})}$$
+Factoring out the part that does not depend on $c$,
+$$= \sum_{t = 0}^{h-1}x_t\cdot e^{-2\pi ij\frac{t}{n}}\sum_{c = 0}^{k-1}(e^{(-2\pi ij\frac{h}{n})})^c$$
+Now recognize that for $j = mk$ for some $m\in \mathbb N^+$ and using that $\frac{h}{n} = \frac{1}{k}$,
+$$(e^{(-2\pi ij\frac{h}{n})})^c = (e^{(\frac{-2\pi imk}{k})})^c = (e^{(-2\pi im)})^c = 1$$
+And since there will be $k$ of these terms of $1$, we can break the sum into two cases,
+$$= \sum_{t = 0}^{h-1}x_t\cdot e^{-2\pi ij\frac{t}{n}}(k + \sum_{c = 0, j \neq mk}^{k-1}(e^{(\frac{-2\pi ij}{k})})^c)$$
+Now using the geometric formula, $\sum_{i = 0}^{k-1}z^i = \frac{1-z^k}{1-z}$, on the second case,
+$$= \sum_{t = 0}^{h-1}x_t\cdot e^{-2\pi ij\frac{t}{n}} (k +\frac{1-(e^{(\frac{-2\pi ij}{k})})^k}{1-e^{(\frac{-2\pi ij}{k})}})$$
+$$= \sum_{t = 0}^{h-1}x_t\cdot e^{-2\pi ij\frac{t}{n}}(k + \frac{1-e^{(-2\pi ij)}}{1-e^{(-2\pi ij\frac{1}{k})}})$$
+But $\frac{1-e^{(-2\pi ij)}}{1-e^{(-2\pi ij\frac{1}{k})}} = 0$ because the numerator is $0$ and the denominator is nonzero. Thus,
+$$= k\sum_{t = 0}^{h-1}x_t\cdot e^{-2\pi ij\frac{t}{n}}$$
+$$= k\beta_j, \forall j$$
+Thus, if we consider $n = kh$ then $b_j = b_{mk} = k\beta_m$ for $0\leq m \leq h-1$ and $b_j = 0$ otherwise.
+
+
+
+
+
